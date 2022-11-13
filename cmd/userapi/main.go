@@ -34,12 +34,12 @@ func main() {
 		r.Route("/v1", func(r chi.Router) {
 			r.Route("/users", func(r chi.Router) {
 				r.Get("/", userHandler.Search)
-				r.Post("/", userHandler.Create)
+				r.Post("/", handler.ReportError(userHandler.Create))
 
 				r.Route("/{id}", func(r chi.Router) {
-					r.Get("/", userHandler.Get)
-					r.Patch("/", userHandler.Update)
-					r.Delete("/", userHandler.Delete)
+					r.Get("/", handler.ReportError(userHandler.Get))
+					r.Patch("/", handler.ReportError(userHandler.Update))
+					r.Delete("/", handler.ReportError(userHandler.Delete))
 				})
 			})
 		})

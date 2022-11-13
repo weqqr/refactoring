@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
@@ -32,12 +31,11 @@ func (c *CreateUserRequest) Bind(r *http.Request) error {
 	return nil
 }
 
-func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	request := CreateUserRequest{}
 
 	if err := render.Bind(r, &request); err != nil {
-		_ = render.Render(w, r, response.ErrInvalidRequest(err))
-		return
+		return response.ErrInvalidRequest(err)
 	}
 
 	u := model.User{
@@ -48,30 +46,28 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.store.CreateUser(u)
 	if err != nil {
-		_ = render.Render(w, r, response.ErrInternal(err))
-		return
+		return err
 	}
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, map[string]interface{}{
 		"user_id": id,
 	})
+
+	return nil
 }
 
-func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 
 	user, err := h.store.GetUser(id)
-	if errors.Is(err, store.ErrUserNotFound) {
-		_ = render.Render(w, r, response.ErrNotFound(err))
-		return
-	}
 	if err != nil {
-		_ = render.Render(w, r, response.ErrInternal(err))
-		return
+		return err
 	}
 
 	render.JSON(w, r, user)
+
+	return nil
 }
 
 type UpdateUserRequest struct {
@@ -82,54 +78,42 @@ func (c *UpdateUserRequest) Bind(r *http.Request) error {
 	return nil
 }
 
-func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	request := UpdateUserRequest{}
 
 	if err := render.Bind(r, &request); err != nil {
-		_ = render.Render(w, r, response.ErrInvalidRequest(err))
-		return
+		return response.ErrInvalidRequest(err)
 	}
 
 	id := chi.URLParam(r, "id")
 
 	user, err := h.store.GetUser(id)
-	if errors.Is(err, store.ErrUserNotFound) {
-		_ = render.Render(w, r, response.ErrNotFound(err))
-		return
-	}
 	if err != nil {
-		_ = render.Render(w, r, response.ErrInternal(err))
-		return
+		return err
 	}
 
 	user.DisplayName = request.DisplayName
 	err = h.store.UpdateUser(id, user)
-	if errors.Is(err, store.ErrUserNotFound) {
-		_ = render.Render(w, r, response.ErrNotFound(err))
-		return
-	}
 	if err != nil {
-		_ = render.Render(w, r, response.ErrInternal(err))
-		return
+		return err
 	}
 
 	render.Status(r, http.StatusNoContent)
+
+	return nil
 }
 
-func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	id := chi.URLParam(r, "id")
 
 	err := h.store.DeleteUser(id)
-	if errors.Is(err, store.ErrUserNotFound) {
-		_ = render.Render(w, r, response.ErrNotFound(err))
-		return
-	}
 	if err != nil {
-		_ = render.Render(w, r, response.ErrInternal(err))
-		return
+		return err
 	}
 
 	render.Status(r, http.StatusNoContent)
+
+	return nil
 }
 
 func (h *UserHandler) Search(w http.ResponseWriter, r *http.Request) {

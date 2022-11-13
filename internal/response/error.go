@@ -15,12 +15,16 @@ type ErrResponse struct {
 	ErrorText  string `json:"error,omitempty"`
 }
 
+func (e *ErrResponse) Error() string {
+	return e.ErrorText
+}
+
 func (e *ErrResponse) Render(w http.ResponseWriter, r *http.Request) error {
 	render.Status(r, e.HTTPStatusCode)
 	return nil
 }
 
-func ErrInvalidRequest(err error) render.Renderer {
+func ErrInvalidRequest(err error) *ErrResponse {
 	return &ErrResponse{
 		Err:            err,
 		HTTPStatusCode: 400,
@@ -29,7 +33,7 @@ func ErrInvalidRequest(err error) render.Renderer {
 	}
 }
 
-func ErrNotFound(err error) render.Renderer {
+func ErrNotFound(err error) *ErrResponse {
 	return &ErrResponse{
 		Err:            err,
 		HTTPStatusCode: 404,
@@ -38,7 +42,7 @@ func ErrNotFound(err error) render.Renderer {
 	}
 }
 
-func ErrInternal(err error) render.Renderer {
+func ErrInternal(err error) *ErrResponse {
 	return &ErrResponse{
 		Err:            err,
 		HTTPStatusCode: 500,
