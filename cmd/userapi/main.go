@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
-	"io/fs"
 	"net/http"
-	"os"
-	"strconv"
+	"refactoring/internal/model"
+	"refactoring/internal/store"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -14,26 +12,17 @@ import (
 	"github.com/go-chi/render"
 )
 
-const store = `users.json`
-
-type (
-	User struct {
-		CreatedAt   time.Time `json:"created_at"`
-		DisplayName string    `json:"display_name"`
-		Email       string    `json:"email"`
-	}
-	UserList  map[string]User
-	UserStore struct {
-		Increment int      `json:"increment"`
-		List      UserList `json:"list"`
-	}
-)
+const storePath = `users.json`
 
 var (
 	ErrUserNotFound = errors.New("user_not_found")
 )
 
+var st *store.Store
+
 func main() {
+	st, _ = store.Open(storePath)
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -65,11 +54,8 @@ func main() {
 }
 
 func searchUsers(w http.ResponseWriter, r *http.Request) {
-	f, _ := os.ReadFile(store)
-	s := UserStore{}
-	_ = json.Unmarshal(f, &s)
-
-	render.JSON(w, r, s.List)
+	list := st.ListUsers()
+	render.JSON(w, r, list)
 }
 
 type CreateUserRequest struct {
@@ -80,10 +66,6 @@ type CreateUserRequest struct {
 func (c *CreateUserRequest) Bind(r *http.Request) error { return nil }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := os.ReadFile(store)
-	s := UserStore{}
-	_ = json.Unmarshal(f, &s)
-
 	request := CreateUserRequest{}
 
 	if err := render.Bind(r, &request); err != nil {
@@ -91,18 +73,13 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Increment++
-	u := User{
+	u := model.User{
 		CreatedAt:   time.Now(),
 		DisplayName: request.DisplayName,
-		Email:       request.DisplayName,
+		Email:       request.Email,
 	}
 
-	id := strconv.Itoa(s.Increment)
-	s.List[id] = u
-
-	b, _ := json.Marshal(&s)
-	_ = os.WriteFile(store, b, fs.ModePerm)
+	id := st.CreateUser(u)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, map[string]interface{}{
@@ -111,13 +88,10 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := os.ReadFile(store)
-	s := UserStore{}
-	_ = json.Unmarshal(f, &s)
-
 	id := chi.URLParam(r, "id")
 
-	render.JSON(w, r, s.List[id])
+	user, _ := st.GetUser(id)
+	render.JSON(w, r, user)
 }
 
 type UpdateUserRequest struct {
@@ -127,10 +101,6 @@ type UpdateUserRequest struct {
 func (c *UpdateUserRequest) Bind(r *http.Request) error { return nil }
 
 func updateUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := os.ReadFile(store)
-	s := UserStore{}
-	_ = json.Unmarshal(f, &s)
-
 	request := UpdateUserRequest{}
 
 	if err := render.Bind(r, &request); err != nil {
@@ -140,37 +110,17 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
-	if _, ok := s.List[id]; !ok {
-		_ = render.Render(w, r, ErrInvalidRequest(ErrUserNotFound))
-		return
-	}
-
-	u := s.List[id]
-	u.DisplayName = request.DisplayName
-	s.List[id] = u
-
-	b, _ := json.Marshal(&s)
-	_ = os.WriteFile(store, b, fs.ModePerm)
+	user, _ := st.GetUser(id)
+	user.DisplayName = request.DisplayName
+	st.UpdateUser(id, user)
 
 	render.Status(r, http.StatusNoContent)
 }
 
 func deleteUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := os.ReadFile(store)
-	s := UserStore{}
-	_ = json.Unmarshal(f, &s)
-
 	id := chi.URLParam(r, "id")
 
-	if _, ok := s.List[id]; !ok {
-		_ = render.Render(w, r, ErrInvalidRequest(ErrUserNotFound))
-		return
-	}
-
-	delete(s.List, id)
-
-	b, _ := json.Marshal(&s)
-	_ = os.WriteFile(store, b, fs.ModePerm)
+	_ = st.DeleteUser(id)
 
 	render.Status(r, http.StatusNoContent)
 }
