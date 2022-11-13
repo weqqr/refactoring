@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -30,7 +30,7 @@ type (
 )
 
 var (
-	UserNotFound = errors.New("user_not_found")
+	ErrUserNotFound = errors.New("user_not_found")
 )
 
 func main() {
@@ -65,7 +65,7 @@ func main() {
 }
 
 func searchUsers(w http.ResponseWriter, r *http.Request) {
-	f, _ := ioutil.ReadFile(store)
+	f, _ := os.ReadFile(store)
 	s := UserStore{}
 	_ = json.Unmarshal(f, &s)
 
@@ -80,7 +80,7 @@ type CreateUserRequest struct {
 func (c *CreateUserRequest) Bind(r *http.Request) error { return nil }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := ioutil.ReadFile(store)
+	f, _ := os.ReadFile(store)
 	s := UserStore{}
 	_ = json.Unmarshal(f, &s)
 
@@ -102,7 +102,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	s.List[id] = u
 
 	b, _ := json.Marshal(&s)
-	_ = ioutil.WriteFile(store, b, fs.ModePerm)
+	_ = os.WriteFile(store, b, fs.ModePerm)
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, map[string]interface{}{
@@ -111,7 +111,7 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := ioutil.ReadFile(store)
+	f, _ := os.ReadFile(store)
 	s := UserStore{}
 	_ = json.Unmarshal(f, &s)
 
@@ -127,7 +127,7 @@ type UpdateUserRequest struct {
 func (c *UpdateUserRequest) Bind(r *http.Request) error { return nil }
 
 func updateUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := ioutil.ReadFile(store)
+	f, _ := os.ReadFile(store)
 	s := UserStore{}
 	_ = json.Unmarshal(f, &s)
 
@@ -141,7 +141,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	if _, ok := s.List[id]; !ok {
-		_ = render.Render(w, r, ErrInvalidRequest(UserNotFound))
+		_ = render.Render(w, r, ErrInvalidRequest(ErrUserNotFound))
 		return
 	}
 
@@ -150,27 +150,27 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	s.List[id] = u
 
 	b, _ := json.Marshal(&s)
-	_ = ioutil.WriteFile(store, b, fs.ModePerm)
+	_ = os.WriteFile(store, b, fs.ModePerm)
 
 	render.Status(r, http.StatusNoContent)
 }
 
 func deleteUser(w http.ResponseWriter, r *http.Request) {
-	f, _ := ioutil.ReadFile(store)
+	f, _ := os.ReadFile(store)
 	s := UserStore{}
 	_ = json.Unmarshal(f, &s)
 
 	id := chi.URLParam(r, "id")
 
 	if _, ok := s.List[id]; !ok {
-		_ = render.Render(w, r, ErrInvalidRequest(UserNotFound))
+		_ = render.Render(w, r, ErrInvalidRequest(ErrUserNotFound))
 		return
 	}
 
 	delete(s.List, id)
 
 	b, _ := json.Marshal(&s)
-	_ = ioutil.WriteFile(store, b, fs.ModePerm)
+	_ = os.WriteFile(store, b, fs.ModePerm)
 
 	render.Status(r, http.StatusNoContent)
 }
