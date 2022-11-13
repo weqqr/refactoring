@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"io/fs"
 	"os"
-	"refactoring/internal/model"
 	"strconv"
+
+	"refactoring/internal/model"
 )
 
 type storeData struct {
