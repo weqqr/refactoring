@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -45,7 +46,11 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Email:       request.Email,
 	}
 
-	id := h.store.CreateUser(u)
+	id, err := h.store.CreateUser(u)
+	if err != nil {
+		_ = render.Render(w, r, response.ErrInternal(err))
+		return
+	}
 
 	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, map[string]interface{}{
@@ -56,7 +61,16 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	user, _ := h.store.GetUser(id)
+	user, err := h.store.GetUser(id)
+	if errors.Is(err, store.ErrUserNotFound) {
+		_ = render.Render(w, r, response.ErrNotFound(err))
+		return
+	}
+	if err != nil {
+		_ = render.Render(w, r, response.ErrInternal(err))
+		return
+	}
+
 	render.JSON(w, r, user)
 }
 
@@ -78,9 +92,26 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
-	user, _ := h.store.GetUser(id)
+	user, err := h.store.GetUser(id)
+	if errors.Is(err, store.ErrUserNotFound) {
+		_ = render.Render(w, r, response.ErrNotFound(err))
+		return
+	}
+	if err != nil {
+		_ = render.Render(w, r, response.ErrInternal(err))
+		return
+	}
+
 	user.DisplayName = request.DisplayName
-	h.store.UpdateUser(id, user)
+	err = h.store.UpdateUser(id, user)
+	if errors.Is(err, store.ErrUserNotFound) {
+		_ = render.Render(w, r, response.ErrNotFound(err))
+		return
+	}
+	if err != nil {
+		_ = render.Render(w, r, response.ErrInternal(err))
+		return
+	}
 
 	render.Status(r, http.StatusNoContent)
 }
@@ -88,7 +119,15 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	_ = h.store.DeleteUser(id)
+	err := h.store.DeleteUser(id)
+	if errors.Is(err, store.ErrUserNotFound) {
+		_ = render.Render(w, r, response.ErrNotFound(err))
+		return
+	}
+	if err != nil {
+		_ = render.Render(w, r, response.ErrInternal(err))
+		return
+	}
 
 	render.Status(r, http.StatusNoContent)
 }

@@ -28,3 +28,20 @@ func ErrInvalidRequest(err error) render.Renderer {
 		ErrorText:      err.Error(),
 	}
 }
+
+func ErrNotFound(err error) render.Renderer {
+	return &ErrResponse{
+		Err:            err,
+		HTTPStatusCode: 404,
+		StatusText:     "Not found.",
+		ErrorText:      err.Error(),
+	}
+}
+
+func ErrInternal(err error) render.Renderer {
+	return &ErrResponse{
+		Err:            err,
+		HTTPStatusCode: 500,
+		StatusText:     "Internal server error.",
+	}
+}
