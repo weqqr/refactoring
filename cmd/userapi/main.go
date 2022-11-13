@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
@@ -13,10 +12,6 @@ import (
 )
 
 const storePath = `users.json`
-
-var (
-	ErrUserNotFound = errors.New("user_not_found")
-)
 
 func main() {
 	userStore, _ := store.Open(storePath)
